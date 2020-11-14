@@ -2,30 +2,32 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.serialization.JavaParserJsonSerializer;
-import soot.jimple.parser.Parse;
 
-import javax.json.Json;
-import javax.json.stream.JsonGenerator;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Scanner;
 
 public class Main {
-    static ASTHalsteadVisitor work(ParseResult<CompilationUnit> result){
+
+    static MetricRecorder recorder = null;
+
+    static void work(ParseResult<CompilationUnit> result) throws IOException {
         Optional<CompilationUnit> unit = result.getResult();
-        ASTHalsteadVisitor visitor = null;
+        ASTVisitor visitor = null;
         if(unit.isPresent()){
             CompilationUnit cu = unit.get();
-            visitor = new ASTHalsteadVisitor();
-            visitor.visit(cu, null);
+            Collector collector = new Collector();
+            visitor = new ASTVisitor();
+            visitor.visit(cu, collector);
+            collector.cyclomaticComplexity(recorder);
+            collector.HalsteadMetrics(recorder);
+            collector.ABC(recorder);
+            collector.otherMetrics(recorder);
+            recorder.export();
         }
-        return visitor;
     }
 
     static ParseResult<CompilationUnit> getAST(String fname, JavaParser parser) throws FileNotFoundException {
@@ -66,36 +68,28 @@ public class Main {
         return Files;
     }
 
-    public static void main(String[] args) {
-        String dirName= args[1];
+    static void src_metrics(String dirName){
+        System.out.println("Apply source code metric static analyze.");
         System.out.println("Directory Name is: " + dirName);
         List<String> files =retrieveFiles(dirName);
-        int DistinctOperators=0, DistinctOperands=0, TotalOperators=0, TotalOperands=0, OperatorCount=0, OperandCount=0;
         try {
-            for (String fname : files) {
-                ParseResult<CompilationUnit> result = getAST(fname);
-                ASTHalsteadVisitor visitor = work(result);
-                DistinctOperators += visitor.oprt.size();
-                DistinctOperands+=visitor.names.size();
-                OperatorCount=0;
-                for (int f : visitor.oprt.values()) OperatorCount+= f;
-                TotalOperators+=OperatorCount;
-                OperandCount=0;
-                for (int f : visitor.names.values()) OperandCount += f;
-                TotalOperands+=OperandCount;
-            }
-            HalsteadMetrics hal = new HalsteadMetrics();
-            hal.setParameters(DistinctOperators, DistinctOperands, TotalOperators, TotalOperands);
-            hal.getVocabulary();
-            hal.getProglen();
-            hal.getCalcProgLen();
-            hal.getVolume();
-            hal.getDifficulty();
-            hal.getEffort();
-            hal.getTimeReqProg();
-            hal.getTimeDelBugs();
+            for (String fname : files) work(getAST(fname));
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    static void binary_metrics(String dirName) {
+
+    }
+
+    public static void main(String[] args) {
+        String type = args[0], dirName= args[1], save_f = args[2];
+        recorder = new MetricRecorder(save_f);
+        if(type.equals("source")){
+            src_metrics(dirName);
+        } else if(type.equals("binary")) {
+            binary_metrics(dirName);
         }
     }
 }

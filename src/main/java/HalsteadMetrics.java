@@ -1,51 +1,41 @@
 public class HalsteadMetrics {
     public int DistOperators = 0, DistOperands = 0, TotOperators = 0, TotOperands = 0;
 
-    public HalsteadMetrics() {}
-    public void setParameters(int DistOprt, int DistOper, int TotOprt, int TotOper) {
-        DistOperators=DistOprt;
-        DistOperands=DistOper;
+    public HalsteadMetrics(int distop, int distopr) {DistOperators = distop; DistOperands = distopr;}
+    public void setParameters(int TotOprt, int TotOper) {
         TotOperators=TotOprt;
         TotOperands=TotOper;
     }
-    public int getVocabulary() {
+    public String getVocabulary() {
         int vocabulary = DistOperators + DistOperands;
-        System.out.println("Vocabulary= "+ vocabulary);
-        return vocabulary;
+        return String.valueOf(vocabulary);
     }
-    public int getProglen() {
+    public String getProglen() {
         int proglen = TotOperators + TotOperands;
-        System.out.println("Program Length= "+ proglen);
-        return proglen;
+        return String.valueOf(proglen);
     }
-    public double getCalcProgLen() {
+    public String getCalcProgLen() {
         double calcProgLen = DistOperators * (Math.log(DistOperators) / Math.log(2)) + DistOperands * (Math.log(DistOperands) / Math.log(2));
-        System.out.println("Calculated Program Length= "+ calcProgLen);
-        return calcProgLen;
+        return String.valueOf(calcProgLen);
     }
-    public double getVolume() {
+    public String getVolume() {
         double volume = (TotOperators + TotOperands) * (Math.log(DistOperators + DistOperands) / Math.log(2));
-        System.out.println("Volume= "+ volume);
-        return volume;
+        return String.valueOf(volume);
     }
-    public double getDifficulty() {
+    public String getDifficulty() {
         double difficulty = (DistOperators / 2.0) * (TotOperands / (double) DistOperands);
-        System.out.println("Difficulty= "+ difficulty);
-        return difficulty;
+        return String.valueOf(difficulty);
     }
-    public double getEffort() {
+    public String getEffort() {
         double effort = ((DistOperators / 2.0) * (TotOperands / (double) DistOperands)) * ((TotOperators + TotOperands) * (Math.log(DistOperators + DistOperands) / Math.log(2)));
-        System.out.println("Effort= "+ effort);
-        return effort;
+        return String.valueOf(effort);
     }
-    public double getTimeReqProg() {
+    public String getTimeReqProg() {
         double timeReqProg = (((DistOperators / 2.0) * (TotOperands / (double) DistOperands)) * ((TotOperators + TotOperands) * (Math.log(DistOperators + DistOperands) / Math.log(2)))) / 18;
-        System.out.println("Time Required to Program= "+ timeReqProg + " seconds");
-        return timeReqProg;
+        return String.valueOf(timeReqProg);
     }
-    public double getTimeDelBugs() {
+    public String getTimeDelBugs() {
         double timeDelBugs = ((TotOperators + TotOperands) * (Math.log(DistOperators + DistOperands) / Math.log(2))) / 3000;
-        System.out.println("Number of delivered bugs= "+ timeDelBugs);
-        return timeDelBugs;
+        return String.valueOf(timeDelBugs);
     }
 }
