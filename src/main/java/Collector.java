@@ -4,30 +4,35 @@ import java.util.Map;
 import java.util.Set;
 
 public class Collector {
-    private Set<String> methodnames = new HashSet<>();
+    private Set<String> methodnames = new HashSet<>(), keys = new HashSet<>();
     private Map<String, Integer> map = new HashMap<>();
     private Map<String, Map<String, Integer>> names = new HashMap<>();
     private Map<String, Map<String, Integer>> opr = new HashMap<>();
     private Map<String, Map<String, Integer>> others = new HashMap<>();
     public void addOP(String methodName, String op) {
+        if(methodName == null) return ;
         methodnames.add(methodName);
         if (!opr.containsKey(methodName)) opr.put(methodName, new HashMap<>());
         if(!opr.get(methodName).containsKey(op)) opr.get(methodName).put(op, 0);
         opr.get(methodName).put(op, opr.get(methodName).get(op) + 1);
     }
     public void addOthers(String methodName, String type, Integer value) {
+        if(methodName == null) return ;
          methodnames.add(methodName);
+         keys.add(type);
          if(!others.containsKey(methodName)) others.put(methodName, new HashMap<>());
          if(!others.get(methodName).containsKey(type)) others.get(methodName).put(type, 0);
          others.get(methodName).put(type, others.get(methodName).get(type) + value);
     }
     public void addName(String methodName, String node) {
+        if(methodName == null) return ;
         methodnames.add(methodName);
         if (!names.containsKey(methodName)) names.put(methodName, new HashMap<>());
         if(!names.get(methodName).containsKey(node)) names.get(methodName).put(node, 0);
         names.get(methodName).put(node, names.get(methodName).get(node) + 1);
     }
     public void addCC(String methodName) {
+        if(methodName == null) return ;
         methodnames.add(methodName);
         if (!map.containsKey(methodName)) map.put(methodName, 0);
         map.put(methodName, map.get(methodName) + 1);
@@ -63,18 +68,21 @@ public class Collector {
             recorder.record(methodname, "NumberOfOperands", String.valueOf(hal.TotOperands));
         }
     }
+    protected int get(String methodname, String key){
+        return others.get(methodname).getOrDefault(key, 0);
+    }
     protected void ABC(MetricRecorder recorder) {
         for(String methodname : methodnames) {
-            int a = others.get(methodname).get("NumberOfAssign");
-            int b = others.get(methodname).get("NumberOfBranch");
-            int c = others.get(methodname).get("NumberOfCond");
+            int a = get(methodname, "NumberOfAssign");
+            int b = get(methodname, "NumberOfBranch");
+            int c = get(methodname, "NumberOfCond");
             recorder.record(methodname, "ABC", String.valueOf(Math.sqrt(a * a + b * b + c * c)));
         }
     }
     protected void otherMetrics(MetricRecorder recorder) {
         for(String methodname : methodnames) {
-            for(Map.Entry<String, Integer> entry : others.get(methodname).entrySet()){
-                recorder.record(methodname, entry.getKey(), String.valueOf(entry.getValue()));
+            for(String key: keys){
+                recorder.record(methodname, key, String.valueOf(get(methodname, key)));
             }
         }
     }

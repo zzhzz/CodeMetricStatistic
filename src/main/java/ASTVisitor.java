@@ -26,7 +26,7 @@ public class ASTVisitor extends VoidVisitorAdapter<Collector> {
 
     @Override
     public void visit(MethodDeclaration node, Collector counter){
-        methodname = node.getNameAsString();
+        methodname = node.getDeclarationAsString();
         cur_depth = 0;
         max_depth = 0;
         sum_depth = 0;

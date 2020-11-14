@@ -2,31 +2,38 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.tree.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 public class Main {
 
-    static MetricRecorder recorder = null;
-    static Collector collector = null;
+    static String save_dir, root_dir;
 
-    static void work(ParseResult<CompilationUnit> result) {
+    static void work(String fname, ParseResult<CompilationUnit> result) throws IOException {
         Optional<CompilationUnit> unit = result.getResult();
         ASTVisitor visitor;
         if(unit.isPresent()){
+            Collector collector = new Collector();
+            MetricRecorder recorder = new MetricRecorder();
             CompilationUnit cu = unit.get();
             visitor = new ASTVisitor();
             visitor.visit(cu, collector);
+            collector.cyclomaticComplexity(recorder);
+            collector.HalsteadMetrics(recorder);
+            collector.ABC(recorder);
+            collector.otherMetrics(recorder);
+            StringBuilder dirPath = new StringBuilder("./" + save_dir + "/");
+            fname = fname.replace(root_dir, "./");
+            String[] dir_array = fname.split("/");
+            for(int i = 0; i < dir_array.length - 1; i++) dirPath.append(dir_array[i]).append("/");
+            String src_name = dir_array[dir_array.length - 1];
+            recorder.export(dirPath.toString(), src_name.replace(".java", ".json"));
+            System.exit(0);
         }
     }
 
@@ -70,87 +77,17 @@ public class Main {
 
     static void src_metrics(String dirName){
         System.out.println("Apply source code metric static analyze.");
-        System.out.println("Directory Name is: " + dirName);
         List<String> files =retrieveFiles(dirName);
         try {
-            for (String fname : files) work(getAST(fname));
+            for (String fname : files) work(fname, getAST(fname));
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    public static List<ClassNode> load(File file) {
-        try {
-            JarFile jar = new JarFile(file);
-            List<ClassNode> list = new ArrayList<>();
-            Enumeration<JarEntry> enumeration = jar.entries();
-            while(enumeration.hasMoreElements()) {
-                JarEntry next = enumeration.nextElement();
-                if(next.getName().endsWith(".class")) {
-                    ClassReader reader = new ClassReader(jar.getInputStream(next));
-                    ClassNode node = new ClassNode();
-                    reader.accept(node, ClassReader.SKIP_DEBUG);
-                    list.add(node);
-                }
-            }
-            jar.close();
-            return list;
-        } catch(IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    static void binary_metrics(String jarName) {
-        List<ClassNode> classes = load(new File(jarName));
-        for(ClassNode classNode : classes) {
-            for(MethodNode methodNode : classNode.methods){
-                String methodname = methodNode.name;
-                for(AbstractInsnNode inst : methodNode.instructions.toArray()){
-                    if(inst instanceof LdcInsnNode) {
-                        collector.addOthers(methodname, "NumberOfLdcInsn", 1);
-                    }
-                    if(inst instanceof JumpInsnNode) {
-                        collector.addOthers(methodname, "NumberOfJumpInsn", 1);
-                    }
-                    if(inst instanceof FieldInsnNode){
-                        collector.addOthers(methodname, "NumberOfFieldInsn", 1);
-                    }
-                    if(inst instanceof IincInsnNode){
-                        collector.addOthers(methodname, "NumberOfIincInsn", 1);
-                    }
-                    if(inst instanceof MethodInsnNode){
-                        collector.addOthers(methodname, "NumberOfMethodInsn", 1);
-                    }
-                    if(inst instanceof VarInsnNode){
-                        collector.addOthers(methodname, "NumberOfVarInsn", 1);
-                    }
-                    if(inst instanceof InvokeDynamicInsnNode){
-                        collector.addOthers(methodname, "NumberOfInvokeDInsn", 1);
-                    }
-
-
-                }
-            }
-        }
-    }
 
     public static void main(String[] args) {
-        String type = args[0], fName= args[1], save_f = args[2];
-        recorder = new MetricRecorder(save_f);
-        collector = new Collector();
-        if(type.equals("source")){
-            src_metrics(fName);
-            collector.cyclomaticComplexity(recorder);
-            collector.HalsteadMetrics(recorder);
-            collector.ABC(recorder);
-        } else if(type.equals("binary")) {
-            binary_metrics(fName);
-        }
-        collector.otherMetrics(recorder);
-        try {
-            recorder.export();
-        } catch (Exception e){
-            e.printStackTrace();
-        }
+        root_dir = args[0];
+        save_dir = args[1];
+        src_metrics(root_dir);
     }
 }
