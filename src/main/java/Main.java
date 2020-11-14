@@ -2,31 +2,33 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.tree.*;
+import soot.PackManager;
+import soot.Transform;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 public class Main {
 
     static MetricRecorder recorder = null;
+    static Collector collector = null;
 
-    static void work(ParseResult<CompilationUnit> result) throws IOException {
+    static void work(ParseResult<CompilationUnit> result) {
         Optional<CompilationUnit> unit = result.getResult();
-        ASTVisitor visitor = null;
+        ASTVisitor visitor;
         if(unit.isPresent()){
             CompilationUnit cu = unit.get();
-            Collector collector = new Collector();
             visitor = new ASTVisitor();
             visitor.visit(cu, collector);
-            collector.cyclomaticComplexity(recorder);
-            collector.HalsteadMetrics(recorder);
-            collector.ABC(recorder);
-            collector.otherMetrics(recorder);
-            recorder.export();
         }
     }
 
@@ -78,18 +80,79 @@ public class Main {
             e.printStackTrace();
         }
     }
+    public static List<ClassNode> load(File file) {
+        try {
+            JarFile jar = new JarFile(file);
+            List<ClassNode> list = new ArrayList<>();
+            Enumeration<JarEntry> enumeration = jar.entries();
+            while(enumeration.hasMoreElements()) {
+                JarEntry next = enumeration.nextElement();
+                if(next.getName().endsWith(".class")) {
+                    ClassReader reader = new ClassReader(jar.getInputStream(next));
+                    ClassNode node = new ClassNode();
+                    reader.accept(node, ClassReader.SKIP_DEBUG);
+                    list.add(node);
+                }
+            }
+            jar.close();
+            return list;
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
-    static void binary_metrics(String dirName) {
+    static void binary_metrics(String jarName) {
+        List<ClassNode> classes = load(new File(jarName));
+        for(ClassNode classNode : classes) {
+            for(MethodNode methodNode : classNode.methods){
+                String methodname = methodNode.name;
+                for(AbstractInsnNode inst : methodNode.instructions.toArray()){
+                    if(inst instanceof LdcInsnNode) {
+                        collector.addOthers(methodname, "NumberOfLdcInsn", 1);
+                    }
+                    if(inst instanceof JumpInsnNode) {
+                        collector.addOthers(methodname, "NumberOfJumpInsn", 1);
+                    }
+                    if(inst instanceof FieldInsnNode){
+                        collector.addOthers(methodname, "NumberOfFieldInsn", 1);
+                    }
+                    if(inst instanceof IincInsnNode){
+                        collector.addOthers(methodname, "NumberOfIincInsn", 1);
+                    }
+                    if(inst instanceof MethodInsnNode){
+                        collector.addOthers(methodname, "NumberOfMethodInsn", 1);
+                    }
+                    if(inst instanceof VarInsnNode){
+                        collector.addOthers(methodname, "NumberOfVarInsn", 1);
+                    }
+                    if(inst instanceof InvokeDynamicInsnNode){
+                        collector.addOthers(methodname, "NumberOfInvokeDInsn", 1);
+                    }
+                    
 
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {
-        String type = args[0], dirName= args[1], save_f = args[2];
+        String type = args[0], fName= args[1], save_f = args[2];
         recorder = new MetricRecorder(save_f);
+        collector = new Collector();
         if(type.equals("source")){
-            src_metrics(dirName);
+            src_metrics(fName);
+            collector.cyclomaticComplexity(recorder);
+            collector.HalsteadMetrics(recorder);
+            collector.ABC(recorder);
         } else if(type.equals("binary")) {
-            binary_metrics(dirName);
+            binary_metrics(fName);
+        }
+        collector.otherMetrics(recorder);
+        try {
+            recorder.export();
+        } catch (Exception e){
+            e.printStackTrace();
         }
     }
 }
