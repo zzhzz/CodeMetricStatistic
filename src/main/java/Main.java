@@ -4,8 +4,6 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.*;
-import soot.PackManager;
-import soot.Transform;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -129,7 +127,7 @@ public class Main {
                     if(inst instanceof InvokeDynamicInsnNode){
                         collector.addOthers(methodname, "NumberOfInvokeDInsn", 1);
                     }
-                    
+
 
                 }
             }
